@@ -1,14 +1,6 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-// TEMP DEBUG - remove after testing
-return res.status(200).json({ 
-  hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-  hasKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-  urlStart: (process.env.NEXT_PUBLIC_SUPABASE_URL || '').slice(0, 15),
-})
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-
   const { email, phone } = req.body
 
   if (!email && !phone) {
@@ -17,10 +9,6 @@ return res.status(200).json({
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    return res.status(500).json({ error: 'Missing config: ' + (!supabaseUrl ? 'URL ' : '') + (!supabaseKey ? 'KEY' : '') })
-  }
 
   const response = await fetch(`${supabaseUrl}/rest/v1/subscribers`, {
     method: 'POST',
@@ -37,7 +25,6 @@ return res.status(200).json({
   })
 
   if (!response.ok) {
-    const err = await response.text()
     return res.status(500).json({ error: 'Could not save your info. Try again.' })
   }
 
