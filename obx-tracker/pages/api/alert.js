@@ -38,6 +38,35 @@ export default async function handler(req, res) {
     },
   })
   const subscribers = await subRes.json()
+  const emails = subscribers.filter(s => s.email).map(s => s.email)
 
-  return res.status(200).json({ ok: true, subscribers: subscribers.length })
+  // 3. Send emails via Resend
+  let emailSent = 0
+  if (process.env.RESEND_API_KEY && emails.length > 0) {
+    await Promise.allSettled(emails.map(email =>
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: 'OBX Alerts <alerts@obxs5premieretracker.com>',
+          to: email,
+          subject: '🎟️ OBX Season 5 Tickets Are Live!',
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0a0e14;color:#f0ece3;border-radius:12px;">
+              <p style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:#d4a03c;margin-bottom:12px;">Outer Banks Alert</p>
+              <h1 style="font-size:28px;margin-bottom:16px;line-height:1.2;">Season 5 Tickets Are Live</h1>
+              <p style="color:rgba(240,236,227,0.7);margin-bottom:24px;">Found on <strong>${source}</strong>. Grab them before they're gone!</p>
+              <a href="${url}" style="display:inline-block;background:#d4a03c;color:#0a0e14;font-weight:600;padding:14px 28px;border-radius:6px;text-decoration:none;">Get Tickets →</a>
+              <p style="margin-top:32px;font-size:12px;color:rgba(240,236,227,0.25);">You signed up at obxs5premieretracker.com</p>
+            </div>
+          `,
+        }),
+      }).then(r => { if (r.ok) emailSent++ })
+    ))
+  }
+
+  return res.status(200).json({ ok: true, emailSent, total: emails.length })
 }
