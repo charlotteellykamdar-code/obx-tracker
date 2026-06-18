@@ -38,8 +38,9 @@ export default async function handler(req, res) {
     },
   })
   const subscribers = await subRes.json()
-const subArray = Array.isArray(subscribers) ? subscribers : []
-const emails = subArray.filter(s => s.email).map(s => s.email)
+  const subArray = Array.isArray(subscribers) ? subscribers : []
+  const emails = subArray.filter(s => s.email).map(s => s.email)
+  const phones = subArray.filter(s => s.phone).map(s => s.phone)
 
   // 3. Send emails via Resend
   let emailSent = 0
@@ -69,5 +70,23 @@ const emails = subArray.filter(s => s.email).map(s => s.email)
     ))
   }
 
-  return res.status(200).json({ ok: true, emailSent, total: emails.length })
+  // 4. Send texts via Vonage
+  let textsSent = 0
+  if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET && phones.length > 0) {
+    await Promise.allSettled(phones.map(phone =>
+      fetch('https://rest.nexmo.com/sms/json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: process.env.VONAGE_API_KEY,
+          api_secret: process.env.VONAGE_API_SECRET,
+          to: phone.replace('+', ''),
+          from: 'OBXTracker',
+          text: `🎟️ OBX S5 tickets are live on ${source}! Grab them: ${url}`,
+        }),
+      }).then(r => { if (r.ok) textsSent++ })
+    ))
+  }
+
+  return res.status(200).json({ ok: true, emailSent, textsSent, total: subArray.length })
 }
