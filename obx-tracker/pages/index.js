@@ -1,26 +1,29 @@
-import { createClient } from '@supabase/supabase-js'
 import Head from 'next/head'
 import { useState } from 'react'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
-
 export async function getServerSideProps() {
-  const { data } = await supabase
-    .from('status')
-    .select('*')
-    .eq('id', 1)
-    .single()
-
-  return {
-    props: {
-      ticketsLive: data?.tickets_live ?? false,
-      ticketUrl: data?.ticket_url ?? null,
-      lastChecked: data?.last_checked ?? null,
-      source: data?.source ?? null,
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/status?id=eq.1&select=*`,
+      {
+        headers: {
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+      }
+    )
+    const data = await res.json()
+    const row = data[0] || {}
+    return {
+      props: {
+        ticketsLive: row.tickets_live ?? false,
+        ticketUrl: row.ticket_url ?? null,
+        lastChecked: row.last_checked ?? null,
+        source: row.source ?? null,
+      }
     }
+  } catch (e) {
+    return { props: { ticketsLive: false, ticketUrl: null, lastChecked: null, source: null } }
   }
 }
 
@@ -63,7 +66,7 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
   return (
     <>
       <Head>
-        <title>OBX Season 5 Premiere Tickets — Are They Live?</title>
+        <title>OBX S5 Tickets — Are They Live?</title>
         <meta name="description" content="Get alerted the second Outer Banks Season 5 premiere tickets drop on GoFobo or Tudum." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -72,11 +75,9 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
       </Head>
 
       <div className="page">
-        {/* Background texture */}
         <div className="bg-layer" />
 
         <main>
-          {/* Status hero */}
           <section className="hero">
             <div className={`status-badge ${ticketsLive ? 'live' : 'waiting'}`}>
               {ticketsLive ? '🎟️ TICKETS ARE LIVE' : '👀 NOT YET'}
@@ -84,8 +85,8 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
 
             <h1 className="headline">
               {ticketsLive
-                ? 'OBX Season 5 Premiere Tickets Are Up'
-                : 'Watching for OBX S5 Premiere Tickets'}
+                ? 'OBX Season 5 Tickets Are Up'
+                : 'Watching for OBX S5 Tickets'}
             </h1>
 
             <p className="subhead">
@@ -105,7 +106,6 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
             )}
           </section>
 
-          {/* Signup form */}
           {!ticketsLive && (
             <section className="signup-section">
               {submitted ? (
@@ -142,7 +142,6 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
             </section>
           )}
 
-          {/* Sites being watched */}
           <section className="watching-section">
             <p className="watching-label">Watching</p>
             <div className="watching-pills">
@@ -176,7 +175,6 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
           overflow: hidden;
         }
 
-        /* Subtle sandy/ocean texture via gradient */
         .bg-layer {
           position: fixed;
           inset: 0;
@@ -197,7 +195,6 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
           width: 100%;
         }
 
-        /* ── Hero ── */
         .hero { text-align: center; }
 
         .status-badge {
@@ -264,7 +261,6 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
           margin-top: 16px;
         }
 
-        /* ── Signup ── */
         .signup-section {
           margin-top: 56px;
           background: rgba(240, 236, 227, 0.04);
@@ -349,7 +345,6 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
           font-size: 16px;
         }
 
-        /* ── Watching ── */
         .watching-section {
           margin-top: 40px;
           display: flex;
@@ -373,7 +368,6 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
           color: rgba(240, 236, 227, 0.5);
         }
 
-        /* ── Footer ── */
         footer {
           position: relative;
           z-index: 1;
