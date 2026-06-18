@@ -1,0 +1,10 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pip install requests beautifulsoup4 playwright && playwright install chromium"
+  },
+  "deploy": {
+    "startCommand": "python tracker.py",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
