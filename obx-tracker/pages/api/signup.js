@@ -1,10 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -14,28 +7,29 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Provide at least an email or phone number.' })
   }
 
-  // Basic email validation
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Invalid email address.' })
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({ error: 'Missing config: ' + (!supabaseUrl ? 'URL ' : '') + (!supabaseKey ? 'KEY' : '') })
   }
 
-  // Basic phone validation (strip non-digits, check length)
-  const cleanPhone = phone ? phone.replace(/\D/g, '') : null
-  if (cleanPhone && (cleanPhone.length < 10 || cleanPhone.length > 11)) {
-    return res.status(400).json({ error: 'Invalid phone number.' })
-  }
-
-  const { error } = await supabase.from('subscribers').upsert(
-    {
-      email: email || null,
-      phone: cleanPhone ? `+1${cleanPhone.slice(-10)}` : null,
-      created_at: new Date().toISOString(),
+  const response = await fetch(`${supabaseUrl}/rest/v1/subscribers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Prefer': 'return=minimal',
     },
-    { onConflict: 'email' }
-  )
+    body: JSON.stringify({
+      email: email || null,
+      phone: phone ? `+1${phone.replace(/\D/g, '').slice(-10)}` : null,
+    }),
+  })
 
-  if (error) {
-    console.error('Supabase error:', error)
+  if (!response.ok) {
+    const err = await response.text()
     return res.status(500).json({ error: 'Could not save your info. Try again.' })
   }
 
