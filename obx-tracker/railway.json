@@ -1,7 +1,10 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pip install requests beautifulsoup4 playwright && playwright install chromium"
+    "nixpacksPlan": {
+      "providers": ["python"],
+      "buildCommand": "pip install requests beautifulsoup4 playwright && playwright install chromium"
+    }
   },
   "deploy": {
     "startCommand": "python tracker.py",
