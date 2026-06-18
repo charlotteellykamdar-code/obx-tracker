@@ -138,12 +138,55 @@ def check_direct_gofobo_urls() -> list[dict]:
     """Check common short GoFobo URLs Netflix might use for OBX."""
     results = []
     candidates = [
-        "https://www.gofobo.com/OBX",
-        "https://www.gofobo.com/OBX5",
-        "https://www.gofobo.com/OuterBanks",
-        "https://www.gofobo.com/OuterBanks5",
-        "https://www.gofobo.com/outerbanks",
-        "https://www.gofobo.com/outerbanks5",
+        urls_to_check = [
+    # Season 5 most likely
+    "https://www.gofobo.com/OBX5Pogues",
+    "https://www.gofobo.com/OBX5pogues",
+    "https://www.gofobo.com/OBX5POGUES",
+    "https://www.gofobo.com/OBX5",
+    "https://www.gofobo.com/OBX5premiere",
+    "https://www.gofobo.com/OBX5Premiere",
+    "https://www.gofobo.com/OBX5Season",
+    "https://www.gofobo.com/OBXSeason5",
+    "https://www.gofobo.com/OBXseason5",
+    "https://www.gofobo.com/OuterBanks5Pogues",
+    "https://www.gofobo.com/OuterBanks5pogues",
+    "https://www.gofobo.com/OuterBanks5",
+    "https://www.gofobo.com/outerbanks5",
+    "https://www.gofobo.com/OuterBanksSeason5",
+    "https://www.gofobo.com/outerbanksseason5",
+    "https://www.gofobo.com/OuterBanksPogues",
+    "https://www.gofobo.com/outerbankspoques",
+    # Generic OBX
+    "https://www.gofobo.com/OBX",
+    "https://www.gofobo.com/obx",
+    "https://www.gofobo.com/OBXPogues",
+    "https://www.gofobo.com/OBXpogues",
+    "https://www.gofobo.com/OBXPOGUES",
+    "https://www.gofobo.com/OBXpremiere",
+    "https://www.gofobo.com/OBXPremiere",
+    "https://www.gofobo.com/OuterBanks",
+    "https://www.gofobo.com/outerbanks",
+    "https://www.gofobo.com/OuterBanksPremiere",
+    "https://www.gofobo.com/outerbanksopremiere",
+    # Pogue life variations
+    "https://www.gofobo.com/POGUELIFE",
+    "https://www.gofobo.com/PogueLife",
+    "https://www.gofobo.com/poguelife",
+    "https://www.gofobo.com/Pogues",
+    "https://www.gofobo.com/pogues",
+    "https://www.gofobo.com/POGUES",
+    "https://www.gofobo.com/PoguesS5",
+    "https://www.gofobo.com/PogueLifeS5",
+    "https://www.gofobo.com/PogueLife5",
+    # Netflix screening variations
+    "https://www.gofobo.com/NetflixOBX",
+    "https://www.gofobo.com/NetflixOBX5",
+    "https://www.gofobo.com/NetflixOuterBanks",
+    "https://www.gofobo.com/NetflixOuterBanks5",
+    # Previous season format for reference
+    "https://www.gofobo.com/OBX4Pogues",
+]
     ]
     for url in candidates:
         try:
