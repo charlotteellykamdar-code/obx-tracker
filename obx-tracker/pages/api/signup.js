@@ -3,6 +3,7 @@ export default async function handler(req, res) {
 
   const { email, phone } = req.body
 
+  
   if (!email && !phone) {
     return res.status(400).json({ error: 'Provide at least an email or phone number.' })
   }
