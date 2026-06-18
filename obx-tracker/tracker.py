@@ -3,10 +3,6 @@ OBX Season 5 Ticket Tracker
 Polls GoFobo and Tudum, then hits your website API to:
   - Flip the site to LIVE
   - Blast email + text alerts to all subscribers
-
-Requirements:
-    pip install requests beautifulsoup4 playwright
-    playwright install chromium
 """
 
 import json
@@ -19,13 +15,12 @@ from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-SITE_URL = "https://your-site.vercel.app"        # ← your Vercel URL
-ALERT_SECRET = "your-secret-here"                # ← same as ALERT_SECRET env var
-POLL_INTERVAL_SECONDS = 300                      # check every 5 min
+SITE_URL = os.environ.get("SITE_URL", "https://obx-tracker.vercel.app")
+ALERT_SECRET = os.environ.get("ALERT_SECRET", "OBX2026")
+POLL_INTERVAL_SECONDS = 300
 SEEN_FILE = "seen_listings.json"
 
 SEARCH_TERMS = ["outer banks", "OBX", "outer banks season 5"]
-
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -47,7 +42,6 @@ def make_id(title: str, url: str) -> str:
 
 
 def fire_alert(title: str, url: str, source: str):
-    """Tell the website tickets are live — it handles emails + texts."""
     try:
         r = requests.post(
             f"{SITE_URL}/api/alert",
@@ -56,8 +50,7 @@ def fire_alert(title: str, url: str, source: str):
             timeout=15,
         )
         if r.ok:
-            data = r.json()
-            print(f"  ✅ Alert fired! {data.get('emailSent', 0)} emails, {data.get('textsSent', 0)} texts sent.")
+            print(f"  ✅ Alert fired!")
         else:
             print(f"  ⚠️  Alert API error: {r.status_code} {r.text}")
     except Exception as e:
@@ -65,7 +58,6 @@ def fire_alert(title: str, url: str, source: str):
 
 
 def ping_last_checked():
-    """Update the 'last checked' timestamp on the site."""
     try:
         requests.post(
             f"{SITE_URL}/api/ping",
@@ -73,12 +65,12 @@ def ping_last_checked():
             timeout=5,
         )
     except Exception:
-        pass  # Non-critical
+        pass
 
 
 # ── SCRAPERS ──────────────────────────────────────────────────────────────────
 
-def check_gofobo() -> list[dict]:
+def check_gofobo() -> list:
     results = []
     for term in SEARCH_TERMS:
         url = f"https://www.gofobo.com/search?q={requests.utils.quote(term)}"
@@ -86,7 +78,6 @@ def check_gofobo() -> list[dict]:
             r = requests.get(url, headers=HEADERS, timeout=15)
             r.raise_for_status()
             soup = BeautifulSoup(r.text, "html.parser")
-
             cards = soup.select(".screening-card, .event-card, article.card, .search-result")
             for card in cards:
                 title_el = card.select_one("h2, h3, .title, .event-title")
@@ -105,88 +96,114 @@ def check_gofobo() -> list[dict]:
     return results
 
 
-def check_tudum() -> list[dict]:
+def check_tudum() -> list:
     results = []
+
+    # Direct URL checks based on S4 pattern: netflix.com/tudum/articles/outer-banks-season-4-fan-premiere-charleston
+    tudum_urls = [
+        "https://www.netflix.com/tudum/articles/outer-banks-season-5-fan-premiere",
+        "https://www.netflix.com/tudum/articles/outer-banks-season-5-fan-premiere-2025",
+        "https://www.netflix.com/tudum/articles/outer-banks-season-5-fan-premiere-2026",
+        "https://www.netflix.com/tudum/articles/outer-banks-season-5-premiere",
+        "https://www.netflix.com/tudum/articles/outer-banks-s5-fan-premiere",
+        "https://www.netflix.com/tudum/articles/outer-banks-5-fan-premiere",
+        "https://www.netflix.com/tudum/articles/obx-season-5-fan-premiere",
+        "https://www.netflix.com/tudum/articles/obx-5-fan-premiere",
+        "https://www.netflix.com/tudum/articles/obx-s5-fan-premiere",
+        "https://www.netflix.com/tudum/articles/outer-banks-fan-premiere-2025",
+        "https://www.netflix.com/tudum/articles/outer-banks-fan-premiere-2026",
+        "https://www.netflix.com/tudum/articles/outer-banks-season-5-fan-screening",
+        "https://www.netflix.com/tudum/articles/outer-banks-season-5-tickets",
+        "https://www.netflix.com/tudum/events/outer-banks-season-5",
+        "https://www.netflix.com/tudum/events/obx-season-5",
+        "https://www.netflix.com/tudum/events/outer-banks-5",
+    ]
+
+    for url in tudum_urls:
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code == 200:
+                results.append({
+                    "title": "Outer Banks S5 Tudum Page is Live!",
+                    "url": url,
+                    "source": "Tudum (direct)",
+                })
+        except Exception as e:
+            print(f"  [Tudum direct] Error {url}: {e}")
+
+    # Also scrape the events page with Playwright
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-
             for term in ["outer banks", "OBX"]:
                 search_url = f"https://www.netflix.com/tudum/events?q={requests.utils.quote(term)}"
                 page.goto(search_url, timeout=30000)
                 page.wait_for_load_state("networkidle", timeout=20000)
-
                 links = page.query_selector_all("a[href]")
                 for link in links:
                     href = link.get_attribute("href") or ""
                     text = link.inner_text().strip()
                     if any(t.lower() in text.lower() for t in SEARCH_TERMS):
                         full_url = href if href.startswith("http") else f"https://www.netflix.com{href}"
-                        results.append({
-                            "title": text[:120],
-                            "url": full_url,
-                            "source": "Tudum",
-                        })
+                        results.append({"title": text[:120], "url": full_url, "source": "Tudum"})
             browser.close()
     except Exception as e:
         print(f"  [Tudum] Error: {e}")
+
     return results
 
 
-def check_direct_gofobo_urls() -> list[dict]:
-    """Check common short GoFobo URLs Netflix might use for OBX."""
+def check_direct_gofobo_urls() -> list:
     results = []
     candidates = [
-        urls_to_check = [
-    # Season 5 most likely
-    "https://www.gofobo.com/OBX5Pogues",
-    "https://www.gofobo.com/OBX5pogues",
-    "https://www.gofobo.com/OBX5POGUES",
-    "https://www.gofobo.com/OBX5",
-    "https://www.gofobo.com/OBX5premiere",
-    "https://www.gofobo.com/OBX5Premiere",
-    "https://www.gofobo.com/OBX5Season",
-    "https://www.gofobo.com/OBXSeason5",
-    "https://www.gofobo.com/OBXseason5",
-    "https://www.gofobo.com/OuterBanks5Pogues",
-    "https://www.gofobo.com/OuterBanks5pogues",
-    "https://www.gofobo.com/OuterBanks5",
-    "https://www.gofobo.com/outerbanks5",
-    "https://www.gofobo.com/OuterBanksSeason5",
-    "https://www.gofobo.com/outerbanksseason5",
-    "https://www.gofobo.com/OuterBanksPogues",
-    "https://www.gofobo.com/outerbankspoques",
-    # Generic OBX
-    "https://www.gofobo.com/OBX",
-    "https://www.gofobo.com/obx",
-    "https://www.gofobo.com/OBXPogues",
-    "https://www.gofobo.com/OBXpogues",
-    "https://www.gofobo.com/OBXPOGUES",
-    "https://www.gofobo.com/OBXpremiere",
-    "https://www.gofobo.com/OBXPremiere",
-    "https://www.gofobo.com/OuterBanks",
-    "https://www.gofobo.com/outerbanks",
-    "https://www.gofobo.com/OuterBanksPremiere",
-    "https://www.gofobo.com/outerbanksopremiere",
-    # Pogue life variations
-    "https://www.gofobo.com/POGUELIFE",
-    "https://www.gofobo.com/PogueLife",
-    "https://www.gofobo.com/poguelife",
-    "https://www.gofobo.com/Pogues",
-    "https://www.gofobo.com/pogues",
-    "https://www.gofobo.com/POGUES",
-    "https://www.gofobo.com/PoguesS5",
-    "https://www.gofobo.com/PogueLifeS5",
-    "https://www.gofobo.com/PogueLife5",
-    # Netflix screening variations
-    "https://www.gofobo.com/NetflixOBX",
-    "https://www.gofobo.com/NetflixOBX5",
-    "https://www.gofobo.com/NetflixOuterBanks",
-    "https://www.gofobo.com/NetflixOuterBanks5",
-    # Previous season format for reference
-    "https://www.gofobo.com/OBX4Pogues",
-]
+        # Season 5 most likely (based on S4 pattern: OBX4Pogues)
+        "https://www.gofobo.com/OBX5Pogues",
+        "https://www.gofobo.com/OBX5pogues",
+        "https://www.gofobo.com/OBX5POGUES",
+        "https://www.gofobo.com/OBX5",
+        "https://www.gofobo.com/OBX5premiere",
+        "https://www.gofobo.com/OBX5Premiere",
+        "https://www.gofobo.com/OBX5Season",
+        "https://www.gofobo.com/OBXSeason5",
+        "https://www.gofobo.com/OBXseason5",
+        "https://www.gofobo.com/OuterBanks5Pogues",
+        "https://www.gofobo.com/OuterBanks5pogues",
+        "https://www.gofobo.com/OuterBanks5",
+        "https://www.gofobo.com/outerbanks5",
+        "https://www.gofobo.com/OuterBanksSeason5",
+        "https://www.gofobo.com/outerbanksseason5",
+        "https://www.gofobo.com/OuterBanksPogues",
+        "https://www.gofobo.com/outerBankspogues",
+        # Generic OBX
+        "https://www.gofobo.com/OBX",
+        "https://www.gofobo.com/obx",
+        "https://www.gofobo.com/OBXPogues",
+        "https://www.gofobo.com/OBXpogues",
+        "https://www.gofobo.com/OBXPOGUES",
+        "https://www.gofobo.com/OBXpremiere",
+        "https://www.gofobo.com/OBXPremiere",
+        "https://www.gofobo.com/OuterBanks",
+        "https://www.gofobo.com/outerbanks",
+        "https://www.gofobo.com/OuterBanksPremiere",
+        "https://www.gofobo.com/outerbankspremiere",
+        # Pogue life variations
+        "https://www.gofobo.com/POGUELIFE",
+        "https://www.gofobo.com/PogueLife",
+        "https://www.gofobo.com/poguelife",
+        "https://www.gofobo.com/Pogues",
+        "https://www.gofobo.com/pogues",
+        "https://www.gofobo.com/POGUES",
+        "https://www.gofobo.com/PoguesS5",
+        "https://www.gofobo.com/PogueLifeS5",
+        "https://www.gofobo.com/PogueLife5",
+        # Netflix screening variations
+        "https://www.gofobo.com/NetflixOBX",
+        "https://www.gofobo.com/NetflixOBX5",
+        "https://www.gofobo.com/NetflixOuterBanks",
+        "https://www.gofobo.com/NetflixOuterBanks5",
+        # Previous season format for reference
+        "https://www.gofobo.com/OBX4Pogues",
     ]
     for url in candidates:
         try:
@@ -216,7 +233,6 @@ def run():
         all_results += check_tudum()
         all_results += check_direct_gofobo_urls()
 
-        # Deduplicate within this batch
         seen_this_run = set()
         new_count = 0
 
