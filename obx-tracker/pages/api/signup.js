@@ -10,24 +10,29 @@ export default async function handler(req, res) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/subscribers`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`,
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify({
-      email: email || null,
-      phone: phone ? `+1${phone.replace(/\D/g, '').slice(-10)}` : null,
-    }),
-  })
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/subscribers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        email: email || null,
+        phone: phone ? `+1${phone.replace(/\D/g, '').slice(-10)}` : null,
+      }),
+    })
 
-  if (!response.ok) {
-    const err = await response.text()
-    return res.status(500).json({ error: err })
+    const text = await response.text()
+
+    if (!response.ok) {
+      return res.status(500).json({ error: text })
+    }
+
+    return res.status(200).json({ ok: true })
+  } catch (e) {
+    return res.status(500).json({ error: e.message })
   }
-
-  return res.status(200).json({ ok: true })
 }
