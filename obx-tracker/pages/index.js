@@ -63,7 +63,7 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
   return (
     <>
       <Head>
-        <title>OBX S5 Tickets — Are They Live?</title>
+        <title>OBX Season 5 Premiere Tickets — Are They Live?</title>
         <meta name="description" content="Get alerted the second Outer Banks Season 5 premiere tickets drop on GoFobo or Tudum." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -84,8 +84,8 @@ export default function Home({ ticketsLive, ticketUrl, lastChecked, source }) {
 
             <h1 className="headline">
               {ticketsLive
-                ? 'OBX Season 5 Tickets Are Up'
-                : 'Watching for OBX S5 Tickets'}
+                ? 'OBX Season 5 Premiere Tickets Are Up'
+                : 'Watching for OBX S5 Premiere Tickets'}
             </h1>
 
             <p className="subhead">
