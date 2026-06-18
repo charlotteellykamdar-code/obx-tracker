@@ -38,7 +38,8 @@ export default async function handler(req, res) {
     },
   })
   const subscribers = await subRes.json()
-  const emails = subscribers.filter(s => s.email).map(s => s.email)
+const subArray = Array.isArray(subscribers) ? subscribers : []
+const emails = subArray.filter(s => s.email).map(s => s.email)
 
   // 3. Send emails via Resend
   let emailSent = 0
