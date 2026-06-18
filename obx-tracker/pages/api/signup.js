@@ -1,6 +1,14 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+// TEMP DEBUG - remove after testing
+return res.status(200).json({ 
+  hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+  hasKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  urlStart: (process.env.NEXT_PUBLIC_SUPABASE_URL || '').slice(0, 15),
+})
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
   const { email, phone } = req.body
 
   if (!email && !phone) {
